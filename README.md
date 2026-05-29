@@ -1,4 +1,4 @@
-# @capybarist/hive-mcp
+# @capybaralabs/hive-mcp
 
 MCP server that exposes a **HIVE** queen as native tools to any MCP-aware LLM host:
 Claude Desktop, Claude Code, Cursor, Continue, Goose, [OpenClaw](https://openclaw.io/), and others.
@@ -14,13 +14,13 @@ Reference: [USE-CASES.md → case 14](https://github.com/capybarist/hive/blob/ma
 Use directly (no install) for the canonical setup in a Claude Desktop / Cursor MCP config:
 
 ```bash
-npx @capybarist/hive-mcp
+npx @capybaralabs/hive-mcp
 ```
 
 Or install globally:
 
 ```bash
-npm install -g @capybarist/hive-mcp
+npm install -g @capybaralabs/hive-mcp
 hive-mcp
 ```
 
@@ -43,7 +43,7 @@ Two environment variables:
   "mcpServers": {
     "hive": {
       "command": "npx",
-      "args": ["-y", "@capybarist/hive-mcp"],
+      "args": ["-y", "@capybaralabs/hive-mcp"],
       "env": {
         "HIVE_QUEEN_URL": "https://your-queen.example.com"
       }
@@ -55,7 +55,7 @@ Two environment variables:
 ### Claude Code
 
 ```bash
-claude mcp add hive npx -y @capybarist/hive-mcp \
+claude mcp add hive npx -y @capybaralabs/hive-mcp \
   -e HIVE_QUEEN_URL=https://your-queen.example.com
 ```
 

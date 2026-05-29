@@ -1,5 +1,5 @@
 {
-  "name": "@capybarist/hive-mcp",
+  "name": "@capybaralabs/hive-mcp",
   "version": "0.1.0",
   "description": "MCP server for HIVE — exposes a HIVE queen as native tools to Claude Desktop, Claude Code, Cursor, OpenClaw, and any MCP-aware host.",
   "license": "BUSL-1.1",
