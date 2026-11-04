@@ -1,0 +1,34 @@
+name: Publish npm (@capybaralabs/hive-mcp)
+
+# Deliberate, not per-push: npm versions are immutable. Bump package.json,
+# then publish a GitHub Release (or run this workflow by hand).
+# Needs the repository secret NPM_TOKEN (an npm automation token with publish
+# rights on the @capybaralabs scope).
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+      - run: npm ci
+      - name: Skip if this version is already on npm
+        id: check
+        run: |
+          V=$(node -p "require('./package.json').version")
+          if npm view "@capybaralabs/hive-mcp@$V" version >/dev/null 2>&1; then
+            echo "@capybaralabs/hive-mcp@$V is already published — skipping."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Publish
+        if: steps.check.outputs.skip != 'true'
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
