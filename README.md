@@ -9,6 +9,20 @@ This package is the bridge between any MCP-aware client and a running HIVE queen
 
 Reference: [USE-CASES.md → case 14](https://github.com/capybarist/hive/blob/main/docs/USE-CASES.md#14--mcp-server) in the HIVE repo.
 
+## Try it in one line
+
+With no configuration it connects to the public demo queen at
+[hive.capybaralabs.tech](https://hive.capybaralabs.tech) (~240 k signed
+fragments from Wikipedia and news feeds), so you can try it before running
+your own node:
+
+```bash
+claude mcp add hive -- npx -y @capybaralabs/hive-mcp
+```
+
+Then ask Claude something like *"use hive_status, then search HIVE for
+retrieval-augmented generation"*.
+
 ## Install
 
 Use directly (no install) for the canonical setup in a Claude Desktop / Cursor MCP config:
@@ -30,8 +44,8 @@ Two environment variables:
 
 | Variable | Required | Default | Purpose |
 |---|---|---|---|
-| `HIVE_QUEEN_URL` | no | `http://localhost:8090` | Base URL of the queen's HTTP API |
-| `HIVE_API_KEY` | when queen auth is enabled (v0.9+) | (none) | Bearer token sent as `Authorization` header |
+| `HIVE_QUEEN_URL` | no | `https://hive.capybaralabs.tech` (public demo) | Base URL of the queen's HTTP API. Use `http://localhost:8090` for a local queen. |
+| `HIVE_API_KEY` | for a private queen with auth enabled | (none) | Bearer token sent as `Authorization` header. Without it, the server uses the queen's public demo token if it publishes one (query-only). |
 
 ### Claude Desktop
 
@@ -74,6 +88,7 @@ Discovered automatically by `mcporter` from npm — see
 |---|---|
 | `hive_query` | Retrieve signed knowledge fragments matching a free-text query. Returns top-k fragments with score, snippet, URL, signing bee. **No LLM synthesis** — the calling LLM (Claude/Cursor) composes the answer from the fragments. |
 | `hive_list_sources` | List the bees registered on this queen and the sources each one declares. Useful for discovery. |
+| `hive_status` | Queen health and size: version, fragments indexed, bees, peers, model, and when it last indexed a new fragment. |
 
 ### Why no LLM synthesis in the MCP path?
 
@@ -99,13 +114,21 @@ npm run dev   # runs from src/ with tsx (no build step)
 npm run build # emits dist/
 ```
 
-Point at a local HIVE queen running on `http://localhost:8090` (default), or set
-`HIVE_QUEEN_URL` to a remote one.
+By default it talks to the public demo queen. Set
+`HIVE_QUEEN_URL=http://localhost:8090` to point it at a local queen.
 
 ## Transport
 
-stdio only in v0.1 — the universal denominator across MCP hosts. SSE / HTTP-streamable
-transports are tracked for v0.2 (needed for remote multi-user queens).
+stdio only — the universal denominator across MCP hosts. A streamable-HTTP
+transport (for remote multi-user queens) is the next item.
+
+## Changelog
+
+- **0.2.0** (2026-11): defaults to the public demo queen; picks up a queen's
+  public demo token automatically when `HIVE_API_KEY` is unset; new
+  `hive_status` tool; shows `rerank_score` when the queen reranks; clear error
+  on 401; version read from `package.json`.
+- **0.1.0** (2026-05): first release — `hive_query`, `hive_list_sources`.
 
 ## License
 

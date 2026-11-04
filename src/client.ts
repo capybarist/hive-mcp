@@ -2,9 +2,10 @@
 // retries, no streaming. The MCP host (Claude Desktop, Cursor, …) re-invokes
 // the tool if it wants to retry; we do not paper over transient failures.
 //
-// All endpoints accept JSON; the queen does not require auth today, but the
-// v0.9 `HIVE_API_KEY` direction is wired in so adding it later is a config
-// change, not a code change. See USE-CASES.md → "Recurring properties · v0.9".
+// Auth: a queen with HIVE_API_KEY set requires a bearer token on /api/query.
+// Pass it as HIVE_API_KEY. Without one, the client asks the queen's public
+// /api/public-bootstrap for its demo token (query-only since HIVE v1.4.1), so
+// public queens such as https://hive.capybaralabs.tech work with no config.
 
 export interface SearchFilters {
   lang?: string;
@@ -24,6 +25,7 @@ export interface SearchHit {
   lang: string;
   node_id: string;
   relevant?: boolean;
+  rerank_score?: number;
 }
 
 export interface QueryResponse {
@@ -67,23 +69,67 @@ export interface StatusResponse {
   llm_ok?: boolean;
   llm_provider?: string;
   peers?: number;
+  last_indexed_at?: string | null;
+}
+
+export interface StatsResponse {
+  mode?: string;
+  version?: string;
+  fragments?: number;
+  bees?: number;
+  topics?: number;
+  peers?: number;
+  last_indexed_at?: string | null;
 }
 
 export class HiveClient {
+  private token: string | undefined;
+  private bootstrapped = false;
+
   constructor(
     private readonly baseUrl: string,
-    private readonly apiKey?: string,
-  ) {}
+    apiKey?: string,
+  ) {
+    this.token = apiKey || undefined;
+    this.bootstrapped = !!this.token;
+  }
+
+  /** True when the client is using the queen's public demo token. */
+  get usingDemoToken(): boolean {
+    return this.bootstrapped && !process.env.HIVE_API_KEY && !!this.token;
+  }
+
+  // Fetch the queen's public demo token once, when no HIVE_API_KEY was given.
+  // A queen without a demo token (or an older one) just leaves us anonymous.
+  // Concurrent tool calls share one in-flight bootstrap.
+  private bootstrapPromise: Promise<void> | null = null;
+  private ensureToken(): Promise<void> {
+    if (this.bootstrapped) return Promise.resolve();
+    this.bootstrapPromise ??= (async () => {
+      try {
+        const res = await fetch(new URL('/api/public-bootstrap', this.baseUrl));
+        if (!res.ok) return;
+        const boot = (await res.json()) as { demoToken?: string | null };
+        if (boot?.demoToken) this.token = boot.demoToken;
+      } catch { /* unreachable or pre-v0.8.8 queen — stay anonymous */ }
+      finally { this.bootstrapped = true; }
+    })();
+    return this.bootstrapPromise;
+  }
 
   private headers(): Record<string, string> {
     const h: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (this.apiKey) h.Authorization = `Bearer ${this.apiKey}`;
+    if (this.token) h.Authorization = `Bearer ${this.token}`;
     return h;
   }
 
   private async req<T>(path: string, init?: RequestInit): Promise<T> {
+    await this.ensureToken();
     const url = new URL(path, this.baseUrl).toString();
     const res = await fetch(url, { ...init, headers: { ...this.headers(), ...(init?.headers ?? {}) } });
+    if (res.status === 401) {
+      throw new Error(`HIVE 401 Unauthorized (${url}): this queen requires a token. Set HIVE_API_KEY in the MCP server's env.`);
+    }
     if (!res.ok) {
       const body = await res.text().catch(() => '');
       throw new Error(`HIVE ${res.status} ${res.statusText} (${url}): ${body.slice(0, 200)}`);
@@ -105,6 +151,10 @@ export class HiveClient {
         filters: opts.filters,
       }),
     });
+  }
+
+  stats(): Promise<StatsResponse> {
+    return this.req<StatsResponse>('/api/stats');
   }
 
   directory(): Promise<DirectoryResponse> {
